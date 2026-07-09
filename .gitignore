@@ -1,0 +1,32 @@
+# Build output
+/build/
+/build-*/
+/cmake-build-*/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+
+# Plugin bundles / binaries
+*.vst3
+*.component
+*.aaxplugin
+Redline120_artefacts/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.user
+
+# Fetched dependencies
+_deps/
+JUCE/
+
+# Local test binaries
+/dsp_tests
+/redline_dsp_tests

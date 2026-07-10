@@ -14,6 +14,12 @@ on:
     tags:
       - 'v*'
 
+# A new run on the same ref cancels an in-progress one (so a fix supersedes a
+# slow/stale build instead of both competing for a runner).
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-windows-installer:
     runs-on: windows-latest
@@ -40,6 +46,7 @@ jobs:
         run: >
           cmake -B build -G Ninja
           -DREDLINE_BUILD_TESTS=OFF
+          -DREDLINE_ENABLE_LTO=OFF
           -DCMAKE_BUILD_TYPE=Release
 
       - name: Build plugin (VST3 + Standalone, Release)

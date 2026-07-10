@@ -18,6 +18,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(REDLINE_BUILD_PLUGIN "Build the JUCE plugin (needs network to fetch JUCE)" ON)
 option(REDLINE_BUILD_TESTS  "Build the standalone DSP unit tests" ON)
+# LTO gives a marginally faster plugin but makes the MSVC link brutally slow on
+# CI runners (tens of minutes, sometimes memory-bound). On by default for local
+# release builds; CI configures with -DREDLINE_ENABLE_LTO=OFF.
+option(REDLINE_ENABLE_LTO   "Link the plugin with link-time optimisation" ON)
 
 # ----------------------------------------------------------------------------
 #  DSP unit tests — pure C++, compile without JUCE. Always cheap to build.
@@ -73,14 +77,19 @@ if(REDLINE_BUILD_PLUGIN)
         JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_REPORT_APP_USAGE=0)
 
+    set(redline_juce_flags
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags)
+    if(REDLINE_ENABLE_LTO)
+        list(APPEND redline_juce_flags juce::juce_recommended_lto_flags)
+    endif()
+
     target_link_libraries(Redline120
         PRIVATE
             juce::juce_audio_utils
             juce::juce_dsp
         PUBLIC
-            juce::juce_recommended_config_flags
-            juce::juce_recommended_lto_flags
-            juce::juce_recommended_warning_flags)
+            ${redline_juce_flags})
 
     # End-to-end smoke test: instantiates the processor and runs audio through
     # the whole chain. Console app so it links the same JUCE modules.

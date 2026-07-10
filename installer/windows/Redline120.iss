@@ -62,7 +62,7 @@ Name: "standalone"; Description: "Standalone application";      Types: full cust
 [Files]
 ; VST3 is a bundle (folder) on Windows — install the whole tree into the shared
 ; VST3 location that every DAW scans.
-Source: "{#ArtefactsDir}\VST3\{#MyVst3Name}\*"; DestDir: "{commonpf64}\VST3\{#MyVst3Name}"; \
+Source: "{#ArtefactsDir}\VST3\{#MyVst3Name}\*"; DestDir: "{commoncf64}\VST3\{#MyVst3Name}"; \
     Components: vst3; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Standalone app + a copy of the docs.
@@ -81,21 +81,12 @@ Filename: "{app}\{#MyExeName}"; Description: "Launch {#MyAppName}"; \
 [UninstallDelete]
 ; Remove the VST3 bundle folder we created (its files are removed automatically,
 ; this cleans up the now-empty directory).
-Type: filesandordirs; Name: "{commonpf64}\VST3\{#MyVst3Name}"
+Type: filesandordirs; Name: "{commoncf64}\VST3\{#MyVst3Name}"
 
-[Code]
-// Refuse to run if neither the VST3 nor the standalone artefact is present —
-// gives a clear error instead of a broken install if the build step was skipped.
-function InitializeSetup(): Boolean;
-begin
-  Result := True;
-  if not (DirExists(ExpandConstant('{#ArtefactsDir}\VST3\{#MyVst3Name}'))
-       or FileExists(ExpandConstant('{#ArtefactsDir}\Standalone\{#MyExeName}'))) then
-  begin
-    MsgBox('Build artefacts were not found in:' + #13#10 +
-           ExpandConstant('{#ArtefactsDir}') + #13#10#13#10 +
-           'Build the plugin (Release, x64) before running this installer.',
-           mbCriticalError, MB_OK);
-    Result := False;
-  end;
-end;
+; NOTE: Build-time validation that the artefacts exist is intentionally NOT done
+; here in [Code]. ISCC already fails at compile time if the [Files] Source paths
+; are missing, and the CI workflow has an explicit "Verify build artefacts exist"
+; step before packaging. An InitializeSetup() check against {#ArtefactsDir} (a
+; compile-time relative source path) would be evaluated at *install* time on the
+; end user's machine, where that path never exists — which would abort every
+; real install.

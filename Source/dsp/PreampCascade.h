@@ -9,6 +9,8 @@
 //  fat low end to mush otherwise). Bright and Crunch reshape the Rhythm channel.
 // ============================================================================
 
+#include <cstddef>   // std::size_t (used in the stage-array index casts below)
+
 #include "TubeStage.h"
 
 namespace tekk

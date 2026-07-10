@@ -22,20 +22,77 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure (Visual Studio 2022, x64)
+      # Set up the MSVC toolchain (vcvars) so CMake+Ninja find cl.exe. This is
+      # version-agnostic: it works with whichever Visual Studio the runner image
+      # currently ships, unlike hardcoding the "Visual Studio 17 2022" generator.
+      - name: Set up MSVC developer environment (x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # msvc-dev-cmd usually puts Visual Studio's bundled Ninja on PATH, but
+      # install it explicitly (choco is preinstalled) so the generator is always
+      # available regardless of the runner image.
+      - name: Set up Ninja
+        run: choco install ninja --no-progress -y
+
+      - name: Configure (Ninja, MSVC x64, Release)
         run: >
-          cmake -B build -G "Visual Studio 17 2022" -A x64
+          cmake -B build -G Ninja
           -DREDLINE_BUILD_TESTS=OFF
           -DCMAKE_BUILD_TYPE=Release
 
       - name: Build plugin (VST3 + Standalone, Release)
         run: cmake --build build --config Release --target Redline120_All --parallel
 
+      # Fail loudly (before packaging) if the build did not produce the artefacts
+      # the installer expects, so a broken build gives a clear error instead of a
+      # confusing Inno Setup failure. Prints the artefacts tree for diagnosis.
+      - name: Verify build artefacts exist
+        shell: pwsh
+        run: |
+          $root = "build\Redline120_artefacts\Release"
+          $vst3 = "$root\VST3\Redline 120.vst3"
+          $exe  = "$root\Standalone\Redline 120.exe"
+
+          Write-Host "=== Artefacts tree (build\Redline120_artefacts) ==="
+          if (Test-Path "build\Redline120_artefacts") {
+            Get-ChildItem -Recurse "build\Redline120_artefacts" |
+              ForEach-Object { $_.FullName } | Sort-Object | Write-Host
+          } else {
+            Write-Host "(build\Redline120_artefacts does not exist)"
+          }
+
+          $missing = @()
+          if (-not (Test-Path -PathType Container $vst3)) { $missing += "VST3 bundle: $vst3" }
+          if (-not (Test-Path -PathType Leaf      $exe))  { $missing += "Standalone exe: $exe" }
+          if ($missing.Count -gt 0) {
+            Write-Host "::error::Expected build artefacts are missing:"
+            $missing | ForEach-Object { Write-Host "::error::  $_" }
+            exit 1
+          }
+          Write-Host "OK: VST3 bundle and Standalone .exe are present."
+
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
+      # Locate ISCC robustly: prefer the default install path, then fall back to
+      # the PATH (choco shim / where.exe). Fail with a clear message if missing.
       - name: Build installer
-        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "installer\windows\Redline120.iss"'
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $cmd = Get-Command iscc -ErrorAction SilentlyContinue
+            if ($cmd) { $iscc = $cmd.Source }
+          }
+          if (-not (Test-Path $iscc)) {
+            Write-Host "::error::ISCC.exe not found (Inno Setup 6 installation failed?)"
+            exit 1
+          }
+          Write-Host "Using ISCC: $iscc"
+          & "$iscc" "installer\windows\Redline120.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4

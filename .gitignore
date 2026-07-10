@@ -30,3 +30,7 @@ JUCE/
 # Local test binaries
 /dsp_tests
 /redline_dsp_tests
+
+# Installer output
+installer/windows/Output/
+*.exe.manifest

@@ -65,6 +65,26 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+### Windows installer
+
+An [Inno Setup](https://jrsoftware.org/isinfo.php) installer packages the VST3
+(into the shared `Common Files\VST3` folder) and the standalone app, with an
+uninstaller and Start-menu entry.
+
+- **Get one without a build machine:** run the **Windows Installer** GitHub
+  Action (Actions tab → *Windows Installer* → *Run workflow*). It builds on a
+  Windows runner with MSVC and uploads the finished
+  `Redline120-<ver>-Windows-x64-Setup.exe` as a downloadable artifact. Pushing a
+  `v*` tag additionally attaches it to a GitHub Release. See
+  [`.github/workflows/windows-installer.yml`](.github/workflows/windows-installer.yml).
+- **Build one locally** (Windows, Visual Studio 2022 + Inno Setup 6): from a
+  *Developer Command Prompt* at the repo root, run
+  [`installer\windows\build_installer.bat`](installer/windows/build_installer.bat).
+  The installer lands in `installer\windows\Output\`.
+
+The installer isn't code-signed (no certificate is bundled), so SmartScreen will
+warn on first run — add signing to the workflow when you have a cert.
+
 ## Testing
 
 The pure-C++ DSP core (`Source/dsp/`) is exercised by

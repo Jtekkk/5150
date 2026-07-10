@@ -20,6 +20,10 @@ concurrency:
   group: windows-installer-${{ github.ref }}
   cancel-in-progress: true
 
+# Needed so the tag build can create/attach a GitHub Release with the installer.
+permissions:
+  contents: write
+
 jobs:
   build-windows-installer:
     runs-on: windows-latest

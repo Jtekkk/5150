@@ -80,10 +80,23 @@ asserting:
 - **all four oversampling qualities** (2/4/8/16×) process cleanly,
 - **latency** is reported for host PDC,
 - **state save/load round-trips** (parameters restore exactly),
-- both **Lead and Rhythm** channels and **pre/post gate** placements run.
+- both **Lead and Rhythm** channels and **pre/post gate** placements run,
+- **every factory preset** produces finite, bounded audio, and switching presets
+  actually moves parameters.
 
 This catches integration faults (NaNs, denormal blow-ups, wiring mistakes) that
 unit tests on individual blocks can't.
+
+## v0.2 additions
+
+- `tests/transformer_ja_tests.cpp` (CTest: `transformer_ja_tests`) validates the
+  **Jiles-Atherton** transformer: finite/bounded, ~unity small-signal gain,
+  core saturation at high level, an **actually-open B-H loop** whose width tracks
+  the Hysteresis control monotonically, and LF/HF bandwidth roll-off.
+- `dsp_tests.cpp` gained checks for the **selectable cab voicings** (Modern
+  brighter than Greenback; sub-low roll-off) and the **feedback-style
+  Presence/Resonance** (presence raises HF pre- and post-power-amp; resonance
+  raises LF).
 
 ## Still to do (reference-based, needs hardware — §13/§14)
 

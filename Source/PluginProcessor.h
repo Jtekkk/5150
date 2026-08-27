@@ -19,13 +19,14 @@
 #include <juce_dsp/juce_dsp.h>
 
 #include "ParameterIDs.h"
+#include "Presets.h"
 #include "dsp/DCBlocker.h"
 #include "dsp/ScreamerBoost.h"
 #include "dsp/PreampCascade.h"
 #include "dsp/ToneStack.h"
 #include "dsp/PhaseInverter.h"
 #include "dsp/PowerAmp.h"
-#include "dsp/OutputTransformer.h"
+#include "dsp/TransformerJA.h"
 #include "dsp/NegativeFeedback.h"
 #include "dsp/NoiseGate.h"
 #include "dsp/Cabinet.h"
@@ -50,10 +51,10 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 0.05; }
 
-    int getNumPrograms() override { return 1; }
-    int getCurrentProgram() override { return 0; }
-    void setCurrentProgram (int) override {}
-    const juce::String getProgramName (int) override { return {}; }
+    int getNumPrograms() override { return (int) tekk::factoryPresets().size(); }
+    int getCurrentProgram() override { return currentProgram; }
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
     void changeProgramName (int, const juce::String&) override {}
 
     void getStateInformation (juce::MemoryBlock&) override;
@@ -69,13 +70,16 @@ public:
     float getOutputLevel() const noexcept { return outputLevel.load(); }
 
 private:
-    void rebuildOversampling (int order);
+    void rebuildOversampling (int order, int type);
     void pullParameters();
+    void applyPreset (int index);
 
     double hostSampleRate = 44100.0;
     double innerSampleRate = 176400.0;   // host rate × oversampling factor
     int    currentOsOrder = 2;           // log2(factor); default 4×
+    int    currentOsType = 0;            // 0 = IIR (live), 1 = FIR (linear phase)
     int    currentBlockSize = 512;
+    int    currentProgram = 0;
 
     // --- DSP blocks ----------------------------------------------------------
     juce::dsp::Gain<float>  inputGain, outputGain;
@@ -85,7 +89,7 @@ private:
     tekk::ToneStack         toneStack;
     tekk::PhaseInverter     phaseInverter;
     tekk::PowerAmp          powerAmp;
-    tekk::OutputTransformer outputTransformer;
+    tekk::JATransformer     outputTransformer;
     tekk::NegativeFeedback  nfb;
     tekk::Cabinet           cabinet;
     tekk::NoiseGate         gate;
@@ -94,8 +98,9 @@ private:
 
     // Smoothed continuous controls (≈15 ms) to avoid zipper noise (§9).
     juce::SmoothedValue<float> smBass, smMid, smTreble, smPresence, smResonance, smPreGain;
+    juce::SmoothedValue<float> smMix;   // dry/wet blend
 
-    juce::AudioBuffer<float> monoBuffer;
+    juce::AudioBuffer<float> monoBuffer, dryBuffer;
 
     std::atomic<float> inputLevel { 0.0f }, outputLevel { 0.0f };
 

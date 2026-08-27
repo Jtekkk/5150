@@ -31,10 +31,17 @@ namespace tekk::params
     inline constexpr const char* gatePosition = "gatePosition"; // 0 = pre, 1 = post
     inline constexpr const char* cabOn        = "cabOn";
     inline constexpr const char* useIR        = "useIR";
+    inline constexpr const char* cabModel     = "cabModel";     // 0=V30 4x12 1=GB 4x12 2=Modern 2x12 3=Vintage 1x12
+    inline constexpr const char* cabMix       = "cabMix";       // voicing<->IR blend, %
     inline constexpr const char* osQuality    = "osQuality";    // 0=2x 1=4x 2=8x 3=16x
+    inline constexpr const char* osType       = "osType";       // 0=IIR (live) 1=FIR (linear phase)
+    inline constexpr const char* depth        = "depth";        // power-amp low-end drive
+    inline constexpr const char* tightness    = "tightness";    // global feel
+    inline constexpr const char* mix          = "mix";          // dry/wet, %
     inline constexpr const char* output       = "output";
 
-    // Current save-state version for the APVTS ValueTree.
+    // Current save-state version for the APVTS ValueTree. New v0.2 params are
+    // added at version 1 so existing (v0.1) saved states still recall cleanly.
     inline constexpr int stateVersion = 1;
 
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();

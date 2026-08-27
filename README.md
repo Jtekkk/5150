@@ -28,15 +28,18 @@ to the design spec in [`docs/DESIGN.md`](docs/DESIGN.md)):
 | **Tone stack** | The interactive passive TMB network as an analog-prototype transfer function (Yeh/DAFx discretisation), Peavey-family component values. The controls *interact* — it is not three independent EQs. |
 | **Phase inverter** | LTP-style mild asymmetric drive into the power section. |
 | **Power amp** | Push-pull class-AB 6L6 nonlinearity with a crossover region and **power-supply sag** (droop then bloom) — the single biggest "feel" element. |
-| **Output transformer** | Saturating core (hysteresis) + LF/HF bandwidth limiting. |
-| **Presence / Resonance** | HF / LF negative-feedback shaping around the power stage. |
-| **Cabinet** | Partitioned IR convolution (load your own WAVs) or a built-in analytic 4×12 "V30-style" voicing. Bypassable. |
+| **Output transformer** | **Jiles-Atherton** magnetic core model (v0.2) — a real B-H hysteresis loop + core saturation, plus LF/HF bandwidth limiting. |
+| **Presence / Resonance** | Feedback-style NFB shaping (v0.2): pre-emphasis *into* the power tubes (so the controls change HF/LF grit, not just EQ) plus post output shelving. |
+| **Depth / Tightness** | v0.2 feel controls: Depth drives the power-amp low end harder (chunk); Tightness firms the interstage high-pass and deepens palm-mute gating. |
+| **Cabinet** | Partitioned IR convolution (load your own WAVs) blended against **four** built-in analytic voicings (V30 4×12 / Greenback 4×12 / Modern 2×12 / Vintage 1×12) via Cab Mix. Bypassable. |
 | **Noise gate** | Hysteretic gate, selectable pre-preamp (tight) or post-cab (natural). |
+| **Mix / Presets** | Dry-wet **Mix** for parallel clean blend; **7 factory presets** with a preset browser. |
 
 **Anti-aliasing** is treated as the make-or-break issue (§5): every static
 nonlinearity is wrapped in **antiderivative anti-aliasing (ADAA)**, and the whole
 nonlinear core additionally runs inside **2×/4×/8×/16× oversampling** (default
-4×). See [`docs/DESIGN.md`](docs/DESIGN.md) and
+4×), with a selectable **IIR (low-latency, live)** or **FIR (linear-phase,
+mixing)** filter. See [`docs/DESIGN.md`](docs/DESIGN.md) and
 [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
 ## Building
@@ -101,29 +104,36 @@ c++ -std=c++17 -O2 -ISource tests/dsp_tests.cpp -o dsp_tests && ./dsp_tests
 ## Parameters
 
 Input Gain · Channel (Rhythm/Lead) · Bright · Crunch · Pre Gain · Bass · Mid ·
-Treble · Resonance · Presence · Post Gain · Sag · Boost (+drive/level) · Gate
-(+threshold/release/position) · Cab · Use IR · OS Quality · Output. All
-continuous controls are parameter-smoothed to avoid zipper noise, and everything
-is exposed through the `AudioProcessorValueTreeState` for automation and preset
-recall.
+Treble · Presence · Resonance · **Depth** · **Tightness** · Post Gain · Sag ·
+**Mix** · Boost (+drive/level) · Gate (+threshold/release/position) · Cab (+model /
+Use IR / **Cab Mix**) · OS Quality · **OS Type** · Output — plus **7 factory
+presets**. All continuous controls are parameter-smoothed to avoid zipper noise,
+and everything is exposed through the `AudioProcessorValueTreeState` for
+automation and preset recall.
 
 ## Layout
 
 ```
 Source/
   PluginProcessor.*     signal-chain assembly, oversampling, latency, state
-  PluginEditor.*        control-panel GUI
+  PluginEditor.*        control-panel GUI + preset browser
   ParameterIDs.h        APVTS parameter layout
+  Presets.h             factory presets
   dsp/                  JUCE-independent DSP core (+ Cabinet, the one JUCE wrapper)
-tests/dsp_tests.cpp     standalone validation harness
+                          TransformerJA.h — Jiles-Atherton output transformer
+tests/dsp_tests.cpp         standalone validation harness
+tests/transformer_ja_tests.cpp   Jiles-Atherton transformer validation
 docs/                   DESIGN.md (spec→code map) · VALIDATION.md (test results)
 ```
 
 ## Status
 
-Draft v0.1 — implements the full v1 signal chain from the design spec. Known
-follow-ups are tracked in [`docs/DESIGN.md`](docs/DESIGN.md) (e.g. a true
-delay-free NFB loop and a full Jiles-Atherton transformer solve).
+v0.2 — the full v1 signal chain plus the post-v1 upgrades: a Jiles-Atherton
+output transformer, feedback-style Presence/Resonance, Depth/Tightness/Mix
+controls, four cab voicings with IR blend, linear-phase oversampling, and 7
+factory presets. Remaining follow-ups (a true delay-free NFB loop; an optional
+neural preamp block; reference-reamp null testing) are tracked in
+[`docs/DESIGN.md`](docs/DESIGN.md).
 
 ## License
 

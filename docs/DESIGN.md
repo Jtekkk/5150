@@ -84,13 +84,15 @@ stable and directionally correct in the tests.
   (fast-ish attack, slow release), compressing transient attack then blooming as
   the reservoir recharges — the biggest feel element. Verified: rail droops
   under load and recovers after.
-- **Output transformer** (`OutputTransformer`): saturating core + a backlash
-  "play" operator that opens a B-H loop, bracketed by LF (finite primary
-  inductance) and HF (leakage + winding capacitance) roll-offs. This is a
-  lightweight stand-in for a full Jiles-Atherton ODE solve — see *Follow-ups*.
-- **Presence / Resonance** (`NegativeFeedback`): HF and LF shelves driven by the
-  same controls. The spec-sanctioned v1 approximation of the frequency-shaped
-  NFB loop; behaviour is correct, a true delay-free loop is a follow-up.
+- **Depth** (v0.2): a low shelf into the class-AB stage so the lows hit the
+  tubes harder (chunk), interacting with sag — distinct from Resonance.
+- **Output transformer** (`JATransformer`, v0.2): a real **Jiles-Atherton**
+  magnetic-core model (see *v0.2 upgrades*), bracketed by LF (finite primary
+  inductance) and HF (leakage + winding capacitance) roll-offs. The v0.1
+  play-operator model (`OutputTransformer.h`) remains as a lighter alternative.
+- **Presence / Resonance** (`NegativeFeedback`, v0.2): feedback-style pre+post
+  shaping (see *v0.2 upgrades*), so the controls change what the power tubes see,
+  not just the output EQ.
 
 ## Cabinet (§8)
 
@@ -112,12 +114,31 @@ decaying note doesn't chatter. Selectable pre-preamp (tight chug) or post-cab
 - `ScopedNoDenormals` (FTZ/DAZ) guards the reactive/feedback states.
 - Reported latency = oversampling latency + convolution latency (rounded).
 
-## Follow-ups (post-v1)
+## v0.2 upgrades (delivered)
+
+- **Jiles-Atherton output transformer** (`TransformerJA.h`) — the real magnetic
+  B-H hysteresis ODE (Langevin anhysteretic curve, effective-field coupling,
+  reversibility + coercivity, RK4 per sample) replaces the v0.1 play-operator
+  stand-in. Loop width is driven primarily by the reversibility `c` (the
+  monotonic width control) plus a bounded `k` sweep; small-signal gain is
+  normalised to unity at the operating point. Validated in
+  `tests/transformer_ja_tests.cpp` (saturation, small-signal linearity, an
+  actually-open B-H loop, LF/HF bandwidth).
+- **Feedback-style Presence / Resonance** — split into a PRE stage (emphasis
+  into the power tubes, so the controls change HF/LF grit and sag interaction,
+  not just output EQ) and a POST stage (output shelving). Real interaction with
+  power-amp drive, still unconditionally stable.
+- **Depth** (power-amp low-end drive) and **Tightness** (interstage high-pass +
+  bias-shift feel) controls; **Mix** dry/wet parallel blend.
+- **Four cab voicings** (V30 4×12 / Greenback 4×12 / Modern 2×12 / Vintage 1×12)
+  with a **Cab Mix** crossfade against a loaded IR.
+- **Linear-phase (FIR) oversampling** option alongside the low-latency IIR.
+- **7 factory presets** with a preset browser.
+
+## Follow-ups (post-v0.2)
 
 - True **delay-free NFB loop** around the power stage (implicit/iterative solve)
-  in place of the shelf approximation.
-- Full **Jiles-Atherton** transformer (Newton per sample) in place of the
-  play-operator stand-in.
+  in place of the pre+post shaping.
 - Optional **neural (NAM/RTNeural) preamp block** dropped in place of the
   cascade nonlinearity when a real head is captured, keeping the tone stack,
   power amp and cab as designed DSP (§12).

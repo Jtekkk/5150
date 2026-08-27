@@ -41,6 +41,9 @@ public:
     void setPreGain (float knob0to10) noexcept { preGain = knob0to10; configure(); }
     void setBright  (bool on) noexcept    { bright = on;    configure(); }
     void setCrunch  (bool on) noexcept    { crunch = on;    configure(); }
+    // Global feel: tighter raises the interstage high-pass corners (firmer lows)
+    // and deepens the coupling-cap bias shift (more gating on palm mutes).
+    void setTightness (float knob0to10) noexcept { tightness = knob0to10; configure(); }
 
     inline float process (float x) noexcept
     {
@@ -67,6 +70,11 @@ private:
         const float frontDrive = 1.0f + 14.0f * g * g;   // stage-1 drive swing
         const float crunchBoost = crunch ? 1.6f : 1.0f;
 
+        // Tightness feel scalers.
+        const float tn        = tightness / 10.0f;        // 0..1
+        const float couplingScale = 0.7f + 0.6f * tn;     // raises HP corners when tight
+        const float biasScale     = 0.6f + 0.9f * tn;     // deepens bias gating when tight
+
         // Per-stage voicing templates. Drive climbs, coupling caps tighten and
         // cathode lift eases as we move down the chain.
         static constexpr float driveMul   [kMaxStages] = { 1.00f, 0.85f, 0.80f, 0.78f, 0.75f };
@@ -81,11 +89,11 @@ private:
             const bool isFront = (i == 0);
             p.drive         = (isFront ? frontDrive : (2.2f + 2.0f * g)) * driveMul[i] * crunchBoost;
             p.makeup        = isFront ? 0.42f : 0.40f;
-            p.couplingHz    = couplingHz[i];
+            p.couplingHz    = couplingHz[i] * couplingScale;
             p.cathodeFreq   = cathodeF[i];
             p.cathodeGainDb = cathodeDb[i];
             p.gridStopperHz = 24000.0f;
-            p.biasShift     = biasSh[i];
+            p.biasShift     = biasSh[i] * biasScale;
             p.biasReleaseMs = 26.0f + 6.0f * i;
             // Slightly stronger asymmetry deeper in the chain → more even-order
             // grit and a firmer gate on the tail stages.
@@ -100,6 +108,7 @@ private:
     double sampleRate = 44100.0;
     Channel channel = Channel::Lead;
     float preGain = 5.0f;
+    float tightness = 5.0f;
     bool  bright = false, crunch = false;
     int   activeStages = 5;
 

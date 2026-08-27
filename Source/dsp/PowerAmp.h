@@ -24,6 +24,7 @@
 #include "ADAA.h"
 #include "Shapers.h"
 #include "EnvelopeFollower.h"
+#include "Biquad.h"
 
 namespace tekk
 {
@@ -36,10 +37,20 @@ public:
         sampleRate = sr;
         sagEnv.prepare (sr);
         sagEnv.setTimes (sagAttackMs, sagReleaseMs);
+        setDepth (depthKnob);
         reset();
     }
 
-    void reset() noexcept { sagEnv.reset(); clip.reset(); }
+    void reset() noexcept { sagEnv.reset(); clip.reset(); depthShelf.reset(); }
+
+    // Power-amp low-end drive ("depth"): a low shelf into the class-AB stage so
+    // more depth pushes the lows harder into saturation and sag — chunkier,
+    // looser low end. Distinct from Resonance (which shapes the NFB output).
+    void setDepth (float knob0to10) noexcept
+    {
+        depthKnob = knob0to10;
+        depthShelf.setLowShelf (sampleRate, 95.0, -2.0 + 0.8 * knob0to10, 0.7);
+    }
 
     void setDrive (float knob0to10) noexcept
     {
@@ -61,6 +72,7 @@ public:
 
     inline float process (float x) noexcept
     {
+        x = depthShelf.process (x);          // power-amp low-end drive
         const float driven = drive * x;
 
         // --- Supply sag ------------------------------------------------------
@@ -92,10 +104,12 @@ private:
     float  sagDepth = 0.35f;
     double sagAttackMs = 8.0, sagReleaseMs = 70.0;
     float  xoverDepth = 0.06f;
+    float  depthKnob = 4.0f;
     static constexpr float xoverW = 0.12f;
 
     EnvelopeFollower   sagEnv;
     ADAA2<CubicClip>   clip;
+    Biquad             depthShelf;
 };
 
 } // namespace tekk

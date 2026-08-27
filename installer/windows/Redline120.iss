@@ -14,7 +14,7 @@
 ; ============================================================================
 
 #define MyAppName      "Redline 120"
-#define MyAppVersion   "0.1.0"
+#define MyAppVersion   "0.2.0"
 #define MyAppPublisher "TEKK Audio Labs"
 #define MyAppURL       "https://github.com/Jtekkk/5150"
 #define MyExeName      "Redline 120.exe"

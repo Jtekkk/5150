@@ -22,6 +22,8 @@
 #include "dsp/OutputTransformer.h"
 #include "dsp/NoiseGate.h"
 #include "dsp/SpeakerVoicing.h"
+#include "dsp/NegativeFeedback.h"
+#include "dsp/TransformerJA.h"
 
 #include <cstdio>
 #include <vector>
@@ -392,6 +394,86 @@ static void testPreampGainStructure()
     std::printf ("     rhythm RMS %.4f | lead RMS %.4f\n", rRms, lRms);
 }
 
+static void testCabModels()
+{
+    std::printf ("Cab voicings: selectable models differ (§8, v0.2):\n");
+    const double fs = 48000.0;
+    auto w = [fs] (double hz) { return 2.0 * M_PI * hz / fs; };
+    SpeakerVoicing v;
+    v.prepare (fs);
+
+    v.setModel (CabModel::Modern_212);   const double modernHi = v.magnitude (w (4000));
+    v.setModel (CabModel::Greenback_412); const double greenHi  = v.magnitude (w (4000));
+    v.setModel (CabModel::V30_412);       const double v30Mid   = v.magnitude (w (2400));
+    check (modernHi > greenHi, "Modern 2x12 brighter than Greenback at 4 kHz",
+           "modern=" + std::to_string (modernHi) + " green=" + std::to_string (greenHi));
+    check (std::isfinite (v30Mid) && v30Mid > 0.0, "V30 voicing finite & non-zero");
+    // Low cut: all models roll off deep lows.
+    check (v.magnitude (w (40)) < v.magnitude (w (400)), "cab rolls off sub-lows");
+}
+
+static void testNegativeFeedback()
+{
+    std::printf ("Presence / Resonance NFB shaping (§7, v0.2):\n");
+    const double fs = 96000.0;
+    auto rmsPost = [fs] (NegativeFeedback& n, double hz)
+    {
+        double acc = 0.0; int cnt = 0;
+        for (int i = 0; i < (int) (fs * 0.1); ++i)
+        {
+            const double x = std::sin (2.0 * M_PI * hz * i / fs);
+            const double y = n.processPost ((float) x);
+            if (i > 2000) { acc += y * y; ++cnt; }
+        }
+        return std::sqrt (acc / std::max (cnt, 1));
+    };
+
+    NegativeFeedback lo; lo.prepare (fs); lo.setPresence (1.0f); lo.setResonance (1.0f);
+    NegativeFeedback hi; hi.prepare (fs); hi.setPresence (9.0f); hi.setResonance (9.0f);
+    check (rmsPost (hi, 6000.0) > rmsPost (lo, 6000.0), "presence up raises HF output");
+    check (rmsPost (hi, 80.0)  > rmsPost (lo, 80.0),  "resonance up raises LF output");
+
+    // Pre stage brightens the drive: more presence => more HF energy pre power amp.
+    auto rmsPre = [fs] (NegativeFeedback& n, double hz)
+    {
+        double acc = 0.0; int cnt = 0;
+        for (int i = 0; i < (int) (fs * 0.1); ++i)
+        {
+            const double x = std::sin (2.0 * M_PI * hz * i / fs);
+            const double y = n.processPre ((float) x);
+            if (i > 2000) { acc += y * y; ++cnt; }
+        }
+        return std::sqrt (acc / std::max (cnt, 1));
+    };
+    check (rmsPre (hi, 6000.0) > rmsPre (lo, 6000.0), "presence pre-emphasis feeds more HF to power amp");
+}
+
+static void testJATransformer()
+{
+    std::printf ("Jiles-Atherton transformer: saturation + hysteresis (§7, v0.2):\n");
+    const double fs = 48000.0;
+    JATransformer ja; ja.prepare (fs);
+
+    auto peakFor = [&] (double amp)
+    {
+        ja.reset();
+        double pk = 0.0;
+        for (int n = 0; n < (int) (fs * 0.1); ++n)
+        {
+            const double x = amp * std::sin (2.0 * M_PI * 220.0 * n / fs);
+            pk = std::max (pk, (double) std::abs (ja.process ((float) x)));
+        }
+        return pk;
+    };
+    const double smallGain = peakFor (0.05) / 0.05;
+    const double largeGain = peakFor (2.0)  / 2.0;
+    check (std::isfinite (largeGain), "JA output finite");
+    check (smallGain > 0.5 && smallGain < 1.5, "JA small-signal gain ~unity",
+           "gain=" + std::to_string (smallGain));
+    check (largeGain < smallGain * 0.7, "JA core saturates at high level",
+           "small=" + std::to_string (smallGain) + " large=" + std::to_string (largeGain));
+}
+
 int main()
 {
     std::printf ("================ TEKK Redline 120 — DSP core validation ================\n\n");
@@ -402,6 +484,9 @@ int main()
     testSag();                    std::printf ("\n");
     testNoiseGate();              std::printf ("\n");
     testTransformer();            std::printf ("\n");
+    testJATransformer();          std::printf ("\n");
+    testCabModels();              std::printf ("\n");
+    testNegativeFeedback();       std::printf ("\n");
     testPreampGainStructure();    std::printf ("\n");
 
     std::printf ("========================================================================\n");

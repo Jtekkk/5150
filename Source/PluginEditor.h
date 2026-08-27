@@ -49,6 +49,12 @@ private:
     juce::TextButton loadIRButton { "Load IR…" };
     std::unique_ptr<juce::FileChooser> fileChooser;
 
+    // Preset selector (drives the processor's program, not an APVTS param).
+    juce::ComboBox   presetBox;
+    juce::Label      presetLabel;
+    juce::TextButton prevPreset { "<" }, nextPreset { ">" };
+    void refreshPresetBox();
+
     // Simple meters.
     float inMeter = 0.0f, outMeter = 0.0f;
 

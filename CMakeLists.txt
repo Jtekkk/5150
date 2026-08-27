@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.22)
 #     ctest --test-dir build --output-on-failure
 # ============================================================================
 
-project(Redline120 VERSION 0.1.0 LANGUAGES C CXX)
+project(Redline120 VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,6 +35,14 @@ if(REDLINE_BUILD_TESTS)
         target_compile_options(redline_dsp_tests PRIVATE -O2 -Wall -Wextra)
     endif()
     add_test(NAME dsp_tests COMMAND redline_dsp_tests)
+
+    add_executable(redline_ja_tests tests/transformer_ja_tests.cpp)
+    target_include_directories(redline_ja_tests PRIVATE Source)
+    target_compile_features(redline_ja_tests PRIVATE cxx_std_17)
+    if(NOT MSVC)
+        target_compile_options(redline_ja_tests PRIVATE -O2 -Wall -Wextra)
+    endif()
+    add_test(NAME transformer_ja_tests COMMAND redline_ja_tests)
 endif()
 
 # ----------------------------------------------------------------------------

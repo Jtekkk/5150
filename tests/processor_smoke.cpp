@@ -119,6 +119,24 @@ int main()
     const float after = proc.apvts.getRawParameterValue (tekk::params::treble)->load();
     check (std::abs (after - before) < 1.0e-3f, "treble restored from saved state");
 
+    std::printf ("\nFactory presets:\n");
+    check (proc.getNumPrograms() >= 6, "at least 6 factory presets present");
+    // Load every preset and confirm the chain still produces finite, bounded audio.
+    bool allPresetsFinite = true;
+    for (int i = 0; i < proc.getNumPrograms(); ++i)
+    {
+        proc.setCurrentProgram (i);
+        if (! runChain (proc, fs, block, peak, sig) || peak >= 4.0f)
+            { allPresetsFinite = false; std::printf ("     preset %d bad (peak=%.3f)\n", i, peak); }
+    }
+    check (allPresetsFinite, "all presets produce finite, bounded audio");
+    // Switching to "Djent Chug" (index 2) should raise Tightness well above Init.
+    proc.setCurrentProgram (0);
+    const float tightInit = proc.apvts.getRawParameterValue (tekk::params::tightness)->load();
+    proc.setCurrentProgram (2);
+    const float tightDjent = proc.apvts.getRawParameterValue (tekk::params::tightness)->load();
+    check (tightDjent > tightInit + 2.0f, "preset changes parameters (Djent tightness > Init)");
+
     std::printf ("\n============================================================\n");
     std::printf (g_fail == 0 ? "ALL SMOKE TESTS PASSED\n" : "%d SMOKE TEST(S) FAILED\n", g_fail);
     return g_fail == 0 ? 0 : 1;
